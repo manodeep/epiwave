@@ -59,7 +59,7 @@ incubation_period_distribution <- parametric_dist_to_distribution(incub_dist)
 
 ## formatted delay distribution
 notif_delay_dist <-
-  add.epiwave_massfun(notif_delay_ecdf, incubation_period_distribution) #add function currently not working, load in manually
+  add(notif_delay_ecdf, incubation_period_distribution) #add function currently not working, load in manually
 notif_full_delay_dist <- create_epiwave_massfun_timeseries(
   dates = infection_days,
   jurisdictions = jurisdictions,
@@ -88,7 +88,7 @@ dow_model <- epiwave::create_dow_priors(
 infection_model_objects <- epiwave::create_infection_timeseries(
   n_days_infection,
   n_jurisdictions,
-  effect_type = 'growth_rate')
+  effect_type = 'growth_rate_deriv')
 
 ## observation models
 notif_observation_model_objects <- create_observation_model(
@@ -110,15 +110,25 @@ m <- greta::model(infection_model_objects$infection_timeseries,
 
 plot(m)
 
-fit <- epiwave.pipelines::fit_model(
+z_raw <- attr(infection_model_objects$gp, "gp_info")$v
+n_chains <- 10
+inits <- replicate(n_chains,
+                   initials(
+                     z_raw = rep(0, length(z_raw))
+                   ),
+                   simplify = FALSE)
+
+fit <- greta::mcmc(
   model = m,
-  n_chains = 10,
-  max_convergence_tries = 1,
-  warmup = 500,
-  n_samples = 1000,
-  n_extra_samples = 100)
+  chains = n_chains,
+  warmup = 1e3,
+  n_samples = 1e3,
+  initial_values = inits,
+  one_by_one = TRUE)
 
-
+r_hats <- coda::gelman.diag(fit, autoburnin = FALSE,
+                            multivariate = FALSE)$psrf[, 1]
+summary(r_hats)
 # long is classic output, then map to infection traj.
 infections_out <- epiwave.pipelines::generate_long_estimates(
   infection_model_objects$infection_timeseries,
@@ -159,7 +169,7 @@ infection_sims <- greta::calculate(infection_model_objects$infection_timeseries,
                                    nsim = 1000)
 
 epiwave.pipelines::plot_timeseries_sims(
-  'infection_timeseries2.png',
+  'infection_timeseries2.pdf',
   infection_sims[[1]],
   type = "infection",
   dates = infection_days,
@@ -169,6 +179,24 @@ epiwave.pipelines::plot_timeseries_sims(
   dim_sim = "2",
   infection_nowcast = FALSE)
 
+reff_sims <- greta::calculate(reff_model_objects$reff,
+                                   values = fit,
+                                   nsim = 1000)
 
+epiwave.pipelines::plot_timeseries_sims(
+  'reff_timeseries2.pdf',
+  reff_sims[[1]],
+  type = "reff",
+  dates = infection_days,
+  start_date = study_seq[1],
+  end_date = study_seq[length(study_seq)],
+  states = jurisdictions,
+  dim_sim = "2",
+  infection_nowcast = FALSE)
 
-
+calculate(infection_model_objects$gp_lengthscale,
+          values = fit,
+          nsim = 1000)[[1]] %>% summary
+calculate(infection_model_objects$gp_variance,
+          values = fit,
+          nsim = 1000)[[1]] %>% summary
