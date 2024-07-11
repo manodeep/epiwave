@@ -107,13 +107,15 @@ create_observation_model <- function (infection_timeseries,
   greta_arrays <- list(
     size,
     prob,
-    convolution_matrices
+    convolution_matrices,
+    case_mat_array
   )
 
   names(greta_arrays) <- c(
     paste0(data_id, '_size'),
     paste0(data_id, '_prob'),
-    paste0(data_id, '_convolution_matrices')
+    paste0(data_id, '_convolution_matrices'),
+    paste0(data_id, '_case_mat')
   )
 
   return(greta_arrays)
