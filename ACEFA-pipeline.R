@@ -7,8 +7,8 @@ library(greta)
 library(readr)
 library(lubridate)
 
-origin_date <- as.Date("2024-06-25")#set for each week
-forecast_date <- as.Date("2024-06-27")
+origin_date <- as.Date("2024-07-09")#set for each week
+forecast_date <- as.Date("2024-07-11")
 
 study_seq <- seq(from = as.Date('2024-01-01'),
                  to = origin_date, 'days')
@@ -121,8 +121,8 @@ inits <- replicate(n_chains,
 fit <- greta::mcmc(
   model = m,
   chains = n_chains,
-  warmup = 1e3,
-  n_samples = 1e3,
+  warmup = 2e3,
+  n_samples = 2e3,
   initial_values = inits,
   one_by_one = TRUE)
 
@@ -168,8 +168,12 @@ infection_sims <- greta::calculate(infection_model_objects$infection_timeseries,
                                    values = fit,
                                    nsim = 1000)
 
-epiwave.pipelines::plot_timeseries_sims(
-  'infection_timeseries2.pdf',
+nowcast_shift <-notif_delay_dist$delay[which((cumsum(notif_delay_dist$mass) > 0.95))[1]]
+
+nowcast_date <- origin_date - nowcast_shift
+
+plot_timeseries_sims(
+  'infection_timeseries2.png',
   infection_sims[[1]],
   type = "infection",
   dates = infection_days,
@@ -177,14 +181,15 @@ epiwave.pipelines::plot_timeseries_sims(
   end_date = study_seq[length(study_seq)],
   states = jurisdictions,
   dim_sim = "2",
-  infection_nowcast = FALSE)
+  infection_nowcast = TRUE,
+  nowcast_start = nowcast_date)
 
 reff_sims <- greta::calculate(reff_model_objects$reff,
                                    values = fit,
                                    nsim = 1000)
 
-epiwave.pipelines::plot_timeseries_sims(
-  'reff_timeseries2.pdf',
+plot_timeseries_sims(
+  'reff_timeseries2.png',
   reff_sims[[1]],
   type = "reff",
   dates = infection_days,
@@ -192,7 +197,20 @@ epiwave.pipelines::plot_timeseries_sims(
   end_date = study_seq[length(study_seq)],
   states = jurisdictions,
   dim_sim = "2",
-  infection_nowcast = FALSE)
+  infection_nowcast = TRUE,
+  nowcast_start = nowcast_date)
+
+plot_timeseries_sims(
+  'reff_timeseries2_1month.png',
+  reff_sims[[1]],
+  type = "reff",
+  dates = infection_days,
+  start_date = origin_date - days(30),
+  end_date = study_seq[length(study_seq)],
+  states = jurisdictions,
+  dim_sim = "2",
+  infection_nowcast = TRUE,
+  nowcast_start = nowcast_date)
 
 calculate(infection_model_objects$gp_lengthscale,
           values = fit,
@@ -200,3 +218,44 @@ calculate(infection_model_objects$gp_lengthscale,
 calculate(infection_model_objects$gp_variance,
           values = fit,
           nsim = 1000)[[1]] %>% summary
+
+calculate(dow_model$dow_dist,
+          values = fit,
+          nsim = 1000)[[1]] %>% apply(3,mean)
+
+case_sims <- greta::calculate(notif_observation_model_objects$notif_case_mat,
+                              values = fit,
+                              nsim = 1000)
+
+plot_timeseries_sims(
+  'cases_timeseries2.png',
+  case_sims[[1]],
+  type = "notification",
+  dates = study_seq,
+  start_date = study_seq[1],
+  end_date = study_seq[length(study_seq)],
+  states = jurisdictions,
+  dim_sim = "2",
+  infection_nowcast = FALSE,
+  #nowcast_start = nowcast_date,
+  case_validation_data = notif_dat %>% rename("count" = "value"))
+
+
+case_w_forecast_sims <- greta::negative_binomial(notif_observation_model_objects$notif_size,
+                                                 notif_observation_model_objects$notif_prob)
+case_w_forecast_sims <- greta::calculate(case_w_forecast_sims,
+                              values = fit,
+                              nsim = 1000)
+
+plot_timeseries_sims(
+  'cases_timeseries2_w_forecast.png',
+  case_w_forecast_sims[[1]],
+  type = "notification",
+  dates = study_seq,
+  start_date = origin_date - days(30),
+  states = jurisdictions,
+  dim_sim = "2",
+  case_forecast =  TRUE,
+  infection_nowcast = TRUE,
+  nowcast_start = origin_date,
+  case_validation_data = notif_dat %>% rename("count" = "value"))

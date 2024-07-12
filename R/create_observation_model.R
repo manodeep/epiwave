@@ -76,9 +76,11 @@ create_observation_model <- function (infection_timeseries,
   )
 
   data_idx <- infection_days %in% as.Date(rownames(case_mat))
-  expected_cases_idx <- expected_cases[data_idx, ]
+  forecast_idx <- infection_days > max(as.Date(rownames(case_mat)))
+  idx <- as.logical(data_idx + forecast_idx)
+  expected_cases_idx <- expected_cases[idx, ]
 
-  n_days <- nrow(case_mat)
+  n_days <- nrow(expected_cases_idx)
 
   # negative binomial parameters
   sqrt_inv_size <- greta::normal(0, 0.5,
@@ -95,7 +97,7 @@ create_observation_model <- function (infection_timeseries,
   valid_mat <- case_mat
   valid_mat[is.na(case_mat)] <- FALSE
   valid_mat[!is.na(case_mat)] <- TRUE
-  valid_idx <- as.logical(as.numeric(valid_mat))
+  valid_idx <- which(as.logical(valid_mat))
 
   case_mat_array <- greta::as_data(
     as.numeric(case_mat)[valid_idx])
