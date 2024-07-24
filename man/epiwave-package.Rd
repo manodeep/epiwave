@@ -4,9 +4,12 @@
 \name{epiwave-package}
 \alias{epiwave}
 \alias{epiwave-package}
-\title{epiwave: Estimate epidemiological parameters by modelling new infections as a gaussian process over time}
+\title{epiwave: Estimate epidemiological parameters by modelling new infections as a 
+    gaussian process over time}
 \description{
-This package exists as a toolbox to create the greta arrays necessary to model infections as a gaussian process over time. The resulting infection timeseries can be used to estimate epidemiological parameters.
+This package exists as a toolbox to create the greta arrays 
+    necessary to model infections as a gaussian process over time. The resulting
+    infection timeseries can be used to estimate epidemiological parameters.
 }
 \seealso{
 Useful links:
