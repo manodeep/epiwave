@@ -29,9 +29,9 @@ create_infection_timeseries <- function (n_days_infection,
                                                          'growth_rate_deriv')) {
 
   # kernel hyperparams
-  gp_lengthscale <- greta::lognormal(-1, 1)
-  gp_variance <- greta::normal(0, 1, truncation = c(0, Inf))
-  gp_kernel <- greta.gp::mat52(gp_lengthscale, gp_variance)
+  gp_lengthscale <- greta::lognormal(-5, 1)
+  gp_variance <- greta::normal(0, 0.2, truncation = c(0, Inf))
+  gp_kernel <- greta.gp::rbf(gp_lengthscale, gp_variance)
 
   # define gp
   gp <- greta.gp::gp(
