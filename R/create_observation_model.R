@@ -83,15 +83,15 @@ create_observation_model <- function (infection_timeseries,
   n_days <- nrow(expected_cases_idx)
 
   # negative binomial parameters
-  sqrt_inv_size <- greta::normal(0, 0.5,
+  raw_inv_size <- greta::normal(0, 0.001,
                                  truncation = c(0, Inf),
                                  dim = n_jurisdictions)
-  sqrt_inv_size <- greta::sweep(greta::zeros(n_days,
+  sqrd_inv_size <- greta::sweep(greta::zeros(n_days,
                                              n_jurisdictions),
-                                2, sqrt_inv_size,
+                                2, raw_inv_size,
                                 FUN = "+")
 
-  size <- 1 / sqrt(sqrt_inv_size)
+  size <- 1 / sqrt(sqrd_inv_size)
   prob <- 1 / (1 + expected_cases_idx / size)
 
   valid_mat <- case_mat
